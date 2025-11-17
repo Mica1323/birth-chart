@@ -3,303 +3,397 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Birth Chart Generator — Mica Stone</title>
-
-  <!-- Styling (simple, self-contained; you can edit later) -->
+  <title>Birth Chart — Classical Marble</title>
   <style>
     :root{
-      --bg:#0b0b0b; --card:#0f0f0f; --text:#ffffff; --muted:#bdbdbd;
-      --accent:#f4d03f;
+      --bg: #0b0b0b;
+      --card: #111;
+      --text: #efece6;
+      --muted: #cfc7be;
+      --accent: #c9a84b;
     }
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background:var(--bg);
-      color:var(--text);
-      display:flex;
-      justify-content:center;
-      padding:32px;
-    }
-    .app {
-      max-width:980px;
-      width:100%;
-      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-      border-radius:12px;
-      padding:22px;
-      box-sizing:border-box;
-      box-shadow:0 6px 30px rgba(0,0,0,0.45);
-    }
-    h1{margin:0 0 14px 0;font-size:20px;color:var(--accent)}
-    p.lead{margin:0 0 18px 0;color:var(--muted)}
-    form label{display:block;font-weight:600;margin-top:10px;color:var(--text)}
-    form input[type="text"], form input[type="date"], form input[type="time"]{
-      width:100%; padding:10px 12px; margin-top:6px; border-radius:8px; border:1px solid rgba(255,255,255,0.06);
-      background:transparent; color:var(--text); box-sizing:border-box;
-    }
-    .row{display:flex;gap:18px;flex-wrap:wrap;margin-top:18px}
+    html,body{height:100%; margin:0; font-family: "Georgia", serif; background: radial-gradient(circle at 20% 10%, rgba(255,255,255,0.02), transparent 5%), var(--bg);}
+    .wrap{max-width:980px;margin:28px auto;padding:22px;background:
+      linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      border-radius:14px; box-shadow: 0 8px 40px rgba(0,0,0,0.6); color:var(--text);}
+    h1{color:var(--accent); margin:0 0 8px 0; font-size:22px; letter-spacing:0.06em}
+    p.lead{color:var(--muted); margin:0 0 18px 0; font-size:14px}
+    form{display:flex; gap:18px; flex-wrap:wrap}
     .col{flex:1 1 320px; min-width:260px}
-    button.generate {
-      margin-top:14px;
-      background:#000;color:#fff;padding:12px 18px;border-radius:8px;border:none;cursor:pointer;
-      font-weight:600; letter-spacing:0.02em;
+    label{display:block; font-weight:700; margin-top:10px; color:var(--text)}
+    input[type=text], input[type=date], input[type=time]{
+      width:100%; padding:10px 12px; margin-top:6px; border-radius:8px;
+      background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); color:var(--text);
+      box-sizing:border-box; font-size:14px;
     }
-    /* place autocomplete list */
-    #placeList { position:relative; margin-top:6px; }
-    #placeList ul { list-style:none; margin:0; padding:0; border-radius:8px; overflow:hidden; max-height:220px; overflow-y:auto; background:#fff; color:#000; border:1px solid rgba(0,0,0,0.08); }
-    #placeList li{ padding:10px 12px; cursor:pointer; border-bottom:1px solid rgba(0,0,0,0.06); }
-    #placeList li:hover{ background:#f7f7f7; }
-    /* chart area */
-    .output{display:flex;gap:20px;align-items:flex-start; margin-top:22px; flex-wrap:wrap; justify-content:center}
-    .wheel { width:360px; height:360px; border-radius:50%; background:transparent; border:1px solid rgba(255,255,255,0.06); display:block; }
-    .results { max-width:420px; min-width:260px; color:var(--text) }
-    .results h3{ margin:0 0 6px 0 }
-    .muted{ color:var(--muted); font-size:0.9rem }
-    .legend{ margin-top:8px; font-size:0.9rem }
-    .legend span{ display:inline-block; margin-right:12px }
-    .legend .sun{ color:#f39c12 } .legend .moon{ color:#3498db } .legend .asc{ color:#e74c3c }
-    footer.note{ margin-top:14px; color:var(--muted); font-size:0.85rem }
-    /* responsive */
-    @media (max-width:820px){ .row{flex-direction:column} .output{flex-direction:column;align-items:center} .wheel{width:320px;height:320px} }
+    .small{font-size:12px;color:var(--muted);margin-top:6px}
+    button.generate{
+      margin-top:14px; background:#000;color:#fff;padding:12px 18px;border-radius:8px;border:none;cursor:pointer;font-weight:700;
+      letter-spacing:0.04em;
+    }
+    .output{display:flex; gap:28px; align-items:flex-start; margin-top:22px; flex-wrap:wrap; justify-content:center}
+    canvas.wheel{ width:360px; height:360px; border-radius:50%; background:transparent; box-shadow: inset 0 6px 18px rgba(0,0,0,0.5);}
+    .results{max-width:480px; min-width:260px; color:var(--text)}
+    .results h3{margin:0 0 6px 0}
+    .muted{color:var(--muted); font-size:13px}
+    .legend{margin-top:10px; font-size:0.95rem}
+    .legend span{display:inline-block;margin-right:12px}
+    .legend .sun{color:#f3c366} .legend .moon{color:#9bd1f2} .legend .asc{color:#f08b8b}
+    footer.note{margin-top:14px;color:var(--muted);font-size:13px}
+    /* marble background for canvas wrapper */
+    .marble {
+      background:
+        radial-gradient(circle at 30% 10%, rgba(255,255,255,0.02), transparent 6%),
+        linear-gradient(135deg, rgba(255,255,255,0.012), rgba(0,0,0,0.02));
+      border-radius:50%;
+      padding:10px;
+    }
+    @media (max-width:820px){ .output{flex-direction:column;align-items:center} .wheel{width:320px;height:320px} }
   </style>
 </head>
 <body>
-  <div class="app" id="app">
-    <h1>Birth Chart Generator</h1>
-    <p class="lead">Enter name, date, time and place of birth. Pick the correct place from the dropdown — the app finds latitude, longitude and local time automatically.</p>
+  <div class="wrap" role="main" aria-labelledby="title">
+    <h1 id="title">Birth Chart — Classical Marble Style</h1>
+    <p class="lead">Enter name, date, local time and place (place is for record — optional). For best accuracy add the UTC offset of the birthplace (e.g. +02 or -5). Then click Generate Chart.</p>
 
-    <form id="birthForm" autocomplete="off">
-      <div class="row">
-        <div class="col">
-          <label for="name">Full name</label>
-          <input id="name" type="text" placeholder="e.g. Mica Stone" required>
-          <label for="dob">Date of birth</label>
-          <input id="dob" type="date" required>
-          <label for="tob">Time of birth (local)</label>
-          <input id="tob" type="time" required>
-        </div>
+    <form id="birthForm" autocomplete="off" onsubmit="return false;">
+      <div class="col">
+        <label for="name">Full name</label>
+        <input id="name" type="text" placeholder="e.g. Mica Stone" />
 
-        <div class="col">
-          <label for="place">Place of birth (city / town)</label>
-          <input id="place" type="text" placeholder="Start typing a city..." required>
-          <div id="placeList"><ul style="display:none"></ul></div>
-          <!-- these are filled automatically when a place is chosen -->
-          <input id="lat" type="hidden">
-          <input id="lon" type="hidden">
-          <input id="tz" type="hidden">
-          <button class="generate" id="generateBtn" type="submit">Generate Chart</button>
-        </div>
+        <label for="dob">Date of birth</label>
+        <input id="dob" type="date" />
+
+        <label for="tob">Time of birth (HH:MM) — local time</label>
+        <input id="tob" type="time" />
+
+        <label for="utc"><span style="font-weight:600">UTC offset (hours, optional)</span></label>
+        <input id="utc" type="text" placeholder="e.g. +2 or -5 (leave blank to use browser timezone)" />
+        <div class="small">If you know the birthplace offset (e.g. Europe/Athens = +2), enter it. Otherwise leave blank.</div>
+      </div>
+
+      <div class="col">
+        <label for="place">Place of birth (optional)</label>
+        <input id="place" type="text" placeholder="City, Country (optional)" />
+        <div class="small">This field is stored only in the generated text — it does not affect calculations unless you provide UTC offset above.</div>
+        <button id="generateBtn" class="generate" style="display:block">Generate Chart</button>
       </div>
     </form>
 
-    <div class="output" aria-live="polite">
-      <canvas id="chartWheel" class="wheel" width="360" height="360"></canvas>
-
-      <div class="results" id="chartResults">
-        <h3>Chart results</h3>
-        <p class="muted">No chart generated yet.</p>
-        <div class="legend">
+    <div class="output" aria-live="polite" style="margin-top:20px;">
+      <div class="marble">
+        <canvas id="chartCanvas" class="wheel" width="360" height="360" aria-label="Zodiac wheel"></canvas>
+        <div class="legend" style="text-align:center">
           <span class="sun">● ☉ Sun</span>
           <span class="moon">● ☾ Moon</span>
           <span class="asc">● ↑ Rising</span>
         </div>
-        <footer class="note">Uses OpenCage for place lookup and TimeZoneDB for local time offsets.</footer>
+      </div>
+
+      <div class="results" id="results" role="region" aria-live="polite">
+        <h3>Chart results</h3>
+        <p class="muted">No chart generated yet.</p>
+        <footer class="note">This generator runs entirely in your browser. For best accuracy provide the correct local birth time and UTC offset.</footer>
       </div>
     </div>
   </div>
 
-  <!-- Libraries: astronomia for planetary math (client-side) -->
+  <!-- astronomia library for astronomy math -->
   <script src="https://cdn.jsdelivr.net/npm/astronomia@4.1.1/index.min.js"></script>
 
   <script>
-  /* ========== CONFIG: paste your API keys here ========== */
-  const OPENCAGE_KEY = "9534fdfd7a604bd19b2662fa62a58101";
-  const TIMEZONEDB_KEY = "5EOIXWITG4FU";
-  /* ====================================================== */
-
   (function(){
-    // helpers / DOM
-    const placeInput = document.getElementById('place');
-    const placeListUL = document.querySelector('#placeList ul');
-    const latEl = document.getElementById('lat');
-    const lonEl = document.getElementById('lon');
-    const tzEl = document.getElementById('tz');
-    const resultsDiv = document.getElementById('chartResults');
-    const canvas = document.getElementById('chartWheel');
+    // utilities & DOM
+    const btn = document.getElementById('generateBtn');
+    const nameEl = document.getElementById('name');
+    const dobEl = document.getElementById('dob');
+    const tobEl = document.getElementById('tob');
+    const utcEl = document.getElementById('utc');
+    const placeEl = document.getElementById('place');
+    const resDiv = document.getElementById('results');
+    const canvas = document.getElementById('chartCanvas');
     const ctx = canvas.getContext('2d');
 
-    // small safety checks for API keys
-    if(!OPENCAGE_KEY || !TIMEZONEDB_KEY || OPENCAGE_KEY.includes('REPLACE') || TIMEZONEDB_KEY.includes('REPLACE')) {
-      resultsDiv.innerHTML = "<h3>Chart results</h3><p style='color:#f88'>Please configure API keys in the file (OpenCage & TimeZoneDB).</p>";
+    // classic Hellenistic-style paragraphs for each sign (expanded)
+    const INTERP = {
+      Aries: {
+        sun: "You move through life as a bright and courageous initiator. The Sun in Aries gifts a direct, energetic will: you meet the world head-on and light the way forward. In Hellenistic practice this placement signifies strong agency and a life shaped by bold ventures.",
+        moon: "Emotionally you respond with heat and honesty. The Moon in Aries shows impulse mixed with loyalty—your feelings arrive fast and declare their truth plainly.",
+        asc: "Outwardly you appear vigorous and immediate. The Ascendant in Aries frames you as a leader: your presence signals motion and a readiness to act."
+      },
+      Taurus: {
+        sun: "A soul built to endure and to cherish. Sun in Taurus imbues life with steadiness and a love for tangible beauty. Ancient technique values this placement for long-term cultivation and earthly well-being.",
+        moon: "The Moon in Taurus brings emotional calm and a hunger for security: comfort and ritual soothe you and those you love.",
+        asc: "Appearing measured and reassuring, a Taurus Ascendant gives the impression of someone who will stay the course and keep things safe."
+      },
+      Gemini: {
+        sun: "A life lived through ideas, conversation and variety. Sun in Gemini thrives on exchange and learning; your path is woven from many threads.",
+        moon: "The Moon in Gemini colors emotions with curiosity: you process feelings through thought, story and dialogue.",
+        asc: "You come across as quick, engaging, and mentally nimble—someone the world wants to speak to and who can connect many minds."
+      },
+      Cancer: {
+        sun: "The heart is your domain. Sun in Cancer centers purpose in home, memory, and care; classical readers prize this placement for deep domestic influence.",
+        moon: "The Moon rules internal life here—intense compassion and protective instincts. You feel tides strongly and shelter loved ones.",
+        asc: "A Cancer Ascendant shows a gentle protective face: people see warmth, receptivity, and a call to nurture."
+      },
+      Leo: {
+        sun: "Radiant leadership and generous performance. Sun in Leo favors creativity, visible service, and the cultivation of reputation for noble ends.",
+        moon: "Emotionally warm and proud: your affections are dramatic, bright, and loyal.",
+        asc: "You enter a room as if lit from within—this Ascendant grants magnetism, authority and the air of one who knows their worth."
+      },
+      Virgo: {
+        sun: "Service, refinement and practical mastery mark a Virgo Sun. A life devoted to craft and useful order is honored under Hellenistic eyes.",
+        moon: "Emotionally analytical and quietly concerned: you show care by tending details and improving what you touch.",
+        asc: "You present as composed, helpful, and precise—someone others trust to organize and provide sound counsel."
+      },
+      Libra: {
+        sun: "A soul oriented to relationship, beauty and justice. Sun in Libra seeks balance, partnership and aesthetic harmony.",
+        moon: "Emotionally tuned to fairness and union, the Moon in Libra seeks to make peace and celebrate connection.",
+        asc: "An elegant, diplomatic exterior—Libra rising draws others into equitable exchange and refined collaboration."
+      },
+      Scorpio: {
+        sun: "Depth, transformation and will are central. Sun in Scorpio drives inward honesty and fierce regeneration—a soul that does not fear the darker waters.",
+        moon: "Your feelings move in currents: intense loyalty, penetrating intuition, and a hunger for meaningful union.",
+        asc: "A Scorpio Ascendant gives the impression of mystery and strength; you are sensed as someone who experiences life with great seriousness."
+      },
+      Sagittarius: {
+        sun: "Sun in Sagittarius brings a life of searching, teaching, and expansive movement. Philosophical horizons and travel shape your path.",
+        moon: "Emotionally buoyant and adventurous: the Moon here craves freedom and honest exploration.",
+        asc: "You present as open, candid and optimistic—someone who invites others to journey with them."
+      },
+      Capricorn: {
+        sun: "Discipline, structure and long-term accomplishment define a Capricorn Sun. Hellenistic tradition prizes this placement for authority and legacy-building.",
+        moon: "Emotionally responsible and reserved; you feel through duty and secure attachment to purpose.",
+        asc: "You appear steady, serious and capable—an outward persona that conveys competence and self-command."
+      },
+      Aquarius: {
+        sun: "A life of ideas, reform and collectivity. Sun in Aquarius champions innovation and communal vision.",
+        moon: "Emotionally idealistic and independent: you feel through principles and shared ideals rather than personal dramas.",
+        asc: "An Aquarian Ascendant suggests originality and an unmistakable personal signature that others find intriguing."
+      },
+      Pisces: {
+        sun: "Imagination, compassion and a sense of unity mark the Pisces Sun. Mystical sensibility and artful empathy are gifts of this placement.",
+        moon: "The Moon in Pisces is profoundly empathetic and receptive; you absorb emotion and often translate it into creative expression.",
+        asc: "A soft, poetic outward manner—Pisces rising appears dreamy, sympathetic, and quietly luminous."
+      }
+    };
+
+    // Small helpers
+    function pad(n){ return n<10 ? '0'+n : ''+n; }
+    function parseUTCOffsetText(s){
+      if(!s) return null;
+      s = s.trim();
+      // Accept +2, -5, +02:00, -05:30
+      const m = s.match(/^([+\-]?)(\d{1,2})(?::?(\d{2}))?$/);
+      if(!m) return null;
+      const sign = (m[1]==='-') ? -1 : 1;
+      const hours = parseInt(m[2],10);
+      const mins = m[3] ? parseInt(m[3],10) : 0;
+      return sign * (hours + mins/60);
     }
 
-    // autocomplete: query OpenCage (limit 6)
-    let acTimer;
-    placeInput.addEventListener('input', () => {
-      clearTimeout(acTimer);
-      placeListUL.style.display = 'none';
-      const q = placeInput.value.trim();
-      if (q.length < 3) return;
-      acTimer = setTimeout(async () => {
-        try {
-          const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(q)}&key=${OPENCAGE_KEY}&limit=6`;
-          const resp = await fetch(url);
-          const data = await resp.json();
-          placeListUL.innerHTML = '';
-          if (!data.results || data.results.length === 0) { placeListUL.style.display='none'; return; }
-          data.results.forEach(r => {
-            const li = document.createElement('li');
-            li.textContent = r.formatted;
-            li.style.padding = '8px 12px';
-            li.style.cursor = 'pointer';
-            li.addEventListener('click', async () => {
-              placeInput.value = r.formatted;
-              latEl.value = r.geometry.lat;
-              lonEl.value = r.geometry.lng;
-              placeListUL.style.display = 'none';
-              // timezone lookup
-              try {
-                const tzResp = await fetch(`https://api.timezonedb.com/v2.1/get-time-zone?key=${TIMEZONEDB_KEY}&format=json&by=position&lat=${r.geometry.lat}&lng=${r.geometry.lng}`);
-                const tzData = await tzResp.json();
-                // tzData.gmtOffset is seconds from UTC (signed)
-                tzEl.value = tzData.gmtOffset/3600;
-                // show small confirmation
-                resultsDiv.querySelector('.muted').textContent = `Location set: ${r.formatted} (UTC ${tzEl.value >=0 ? '+'+tzEl.value : tzEl.value})`;
-              } catch(e) {
-                console.warn('timezone lookup failed', e);
-              }
-            });
-            placeListUL.appendChild(li);
-          });
-          placeListUL.style.display = 'block';
-        } catch(err) {
-          console.error('autocomplete error', err);
-        }
-      }, 350);
-    });
-
-    // astronomy helpers (uses astronomia loaded above)
+    // astronomy using astronomia (loaded from CDN)
     const astro = window.astronomia;
     const SIGN_NAMES = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
-    function signFromLongitude(lon) { return SIGN_NAMES[Math.floor(((lon%360)+360)%360/30)]; }
-    function jdFromDateUTC(date) {
-      const y = date.getUTCFullYear(), m = date.getUTCMonth()+1;
-      const day = date.getUTCDate() + date.getUTCHours()/24 + date.getUTCMinutes()/1440 + date.getUTCSeconds()/86400;
-      return astro.julian.CalendarGregorianToJD(y,m,day);
+    function signFromLon(lon){ return SIGN_NAMES[Math.floor(((lon%360)+360)%360/30)]; }
+
+    function julianFromDateUTC(dt){
+      // dt must be a JS Date in UTC (use getUTC* methods)
+      const y = dt.getUTCFullYear();
+      const m = dt.getUTCMonth()+1;
+      const d = dt.getUTCDate() + dt.getUTCHours()/24 + dt.getUTCMinutes()/1440 + dt.getUTCSeconds()/86400;
+      return astro.julian.CalendarGregorianToJD(y,m,d);
     }
 
-    function calcPositions(dateUTC, lat, lon) {
-      const jd = jdFromDateUTC(dateUTC);
-      const sunPos = astro.sun.position(jd); // returns object with lon (rad)
-      const moonPos = astro.moon.position(jd); // returns object with lon (rad)
+    function calcPositionsFromUTCDate(dtUTC, lat, lon){
+      const jd = julianFromDateUTC(dtUTC);
+      const s = astro.sun.position(jd);
+      const m = astro.moon.position(jd);
       const eps = astro.obliquity.meanObliquity(jd); // radians
       const th = astro.sidereal.apparent0(jd); // radians
-      const lstDeg = (th * 180/Math.PI) + lon; // local sidereal deg
+      const lstDeg = (th * 180/Math.PI) + lon; // local sidereal in degrees
       const phi = lat * Math.PI/180;
       const ob = eps; // radians
       const LST = lstDeg * Math.PI/180;
-      // ascendant formula (approx)
+      // Ascendant formula (approx)
       const tA = Math.atan2(Math.sin(LST), Math.cos(LST)*Math.cos(ob) - Math.tan(phi)*Math.sin(ob));
       const ascDeg = (tA * 180/Math.PI + 360) % 360;
       return {
-        sun: (sunPos.lon*180/Math.PI+360)%360,
-        moon: (moonPos.lon*180/Math.PI+360)%360,
+        sun: (s.lon * 180/Math.PI + 360) % 360,
+        moon: (m.lon * 180/Math.PI + 360) % 360,
         asc: ascDeg,
         jd: jd
       };
     }
 
-    // draw wheel with markers
-    function drawWheel(positions) {
-      const w = canvas.width, h = canvas.height;
-      const cx = w/2, cy = h/2, r = Math.min(w,h)/2 - 18;
-      ctx.clearRect(0,0,w,h);
-      // outer circle
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
-
-      // sections and labels
-      ctx.font = '12px serif'; ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.textBaseline='middle';
-      for (let i=0;i<12;i++){
-        const ang = (i*30 - 90) * Math.PI/180;
-        // divider
-        ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx + r*Math.cos(ang), cy + r*Math.sin(ang)); ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.stroke();
-        const la = ((i*30 + 15) - 90) * Math.PI/180;
-        ctx.fillText(SIGN_NAMES[i].slice(0,3), cx + (r-30)*Math.cos(la), cy + (r-30)*Math.sin(la));
+    // Draw marble texture behind wheel (simple procedural)
+    function paintMarbleBackground(ctx, w, h){
+      // subtle veins
+      ctx.save();
+      ctx.fillStyle = '#efece6';
+      ctx.globalAlpha = 0.02;
+      ctx.fillRect(0,0,w,h);
+      ctx.globalAlpha = 1;
+      for(let i=0;i<120;i++){
+        ctx.beginPath();
+        const x = Math.random()*w, y = Math.random()*h;
+        ctx.moveTo(x, y);
+        const cp1x = x + (Math.random()-0.5)*160;
+        const cp1y = y + (Math.random()-0.5)*160;
+        const cp2x = cp1x + (Math.random()-0.5)*120;
+        const cp2y = cp1y + (Math.random()-0.5)*120;
+        const x2 = cp2x + (Math.random()-0.5)*60, y2 = cp2y + (Math.random()-0.5)*60;
+        ctx.strokeStyle = `rgba(0,0,0,${0.02 + Math.random()*0.04})`;
+        ctx.lineWidth = 1 + Math.random()*1.6;
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x2, y2);
+        ctx.stroke();
       }
-
-      // mark helper
-      function mark(deg, label, color) {
-        const ang = (deg - 90) * Math.PI/180;
-        const px = cx + (r-50)*Math.cos(ang), py = cy + (r-50)*Math.sin(ang);
-        ctx.beginPath(); ctx.fillStyle = color; ctx.arc(px,py,8,0,Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#000'; ctx.font='10px serif'; ctx.fillText(label, px, py+3);
-      }
-
-      mark(positions.sun, '☉', '#f39c12');
-      mark(positions.moon, '☾', '#3498db');
-      mark(positions.asc, '↑', '#e74c3c');
+      ctx.restore();
     }
 
-    // concise interpretations (you can expand)
-    const meanings = {
-      Aries: {sun: "Fiery leadership, initiative and courage.", moon: "Quick emotional responses and pride in feelings.", asc: "Direct and energetic outward persona."},
-      Taurus: {sun: "Grounded, patient, practical presence.", moon: "Nurturing, steady emotions and attachment.", asc: "Calm, deliberate, reassuring outward manner."},
-      Gemini: {sun: "Curious, communicative and adaptable core.", moon: "Emotionally cerebral and changeable.", asc: "Talkative, quick, and mentally agile outward impression."},
-      Cancer: {sun: "Protective, home-focused purpose.", moon: "Deeply feeling and caring inner life.", asc: "Gentle, sensitive, guardian-like presentation."},
-      Leo: {sun: "Creative leadership, generosity and confidence.", moon: "Warm-hearted pride and dramatic feeling nature.", asc: "Bright, charismatic, and magnetic presence."},
-      Virgo: {sun: "Practical service, attention to detail.", moon: "Emotionally helpful and steady.", asc: "Precise, organized, and thoughtful exterior."},
-      Libra: {sun: "Relationship-oriented, graceful and fair.", moon: "Seeks harmony and partnership emotionally.", asc: "Polished, diplomatic, and balanced outward style."},
-      Scorpio: {sun: "Intensity, transformation and willpower.", moon: "Emotionally deep, secret and loyal.", asc: "Magnetic, intense and private public manner."},
-      Sagittarius: {sun: "Philosophical, free and adventurous.", moon: "Emotionally optimistic and restless.", asc: "Open, candid and exploratory presentation."},
-      Capricorn: {sun: "Disciplined ambition and structure.", moon: "Responsible, reserved emotional life.", asc: "Serious, authoritative and steady persona."},
-      Aquarius: {sun: "Innovative, humanitarian and clever.", moon: "Detached ideals and emotional independence.", asc: "Unconventional, visionary and aloof presentation."},
-      Pisces: {sun: "Imaginative, compassionate and receptive.", moon: "Deeply empathetic and intuitive.", asc: "Dreamy, soft, and imaginative outward presence."}
-    };
+    function drawWheel(positions){
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0,0,w,h);
 
-    // on submit: build date/time using place tz (tz is hours offset)
-    document.getElementById('birthForm').addEventListener('submit', async (ev) => {
-      ev.preventDefault();
-      const name = document.getElementById('name').value.trim() || 'You';
-      const dob = document.getElementById('dob').value;
-      const tob = document.getElementById('tob').value;
-      const lat = parseFloat(latEl.value);
-      const lon = parseFloat(lonEl.value);
-      const tzOffset = parseFloat(tzEl.value) || 0;
+      // marble backing
+      paintMarbleBackground(ctx, w, h);
 
-      if (!dob || !tob || Number.isNaN(lat) || Number.isNaN(lon)) {
-        alert('Please complete date, time, and pick a valid place from the suggestions.');
+      const cx = w/2, cy = h/2, r = Math.min(w,h)/2 - 18;
+      // outer ring
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.lineWidth = 2; ctx.strokeStyle = '#2b2b2b'; ctx.stroke();
+
+      // divisions and labels
+      ctx.font = '12px Georgia'; ctx.fillStyle = '#1b1b1b'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      for(let i=0;i<12;i++){
+        const ang = (i*30 - 90) * Math.PI/180;
+        ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx + r*Math.cos(ang), cy + r*Math.sin(ang));
+        ctx.strokeStyle = 'rgba(27,27,27,0.08)'; ctx.lineWidth = 1; ctx.stroke();
+        const la = ((i*30 + 15) - 90) * Math.PI/180;
+        ctx.fillStyle = '#2b2b2b';
+        ctx.fillText(SIGN_NAMES[i].slice(0,3), cx + (r-34)*Math.cos(la), cy + (r-34)*Math.sin(la));
+      }
+
+      // place markers
+      function mark(deg, color, glyph){
+        const a = (deg - 90) * Math.PI/180;
+        const px = cx + (r-60)*Math.cos(a), py = cy + (r-60)*Math.sin(a);
+        ctx.beginPath(); ctx.fillStyle = color; ctx.arc(px, py, 12, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#000'; ctx.font = '12px Georgia'; ctx.fillText(glyph, px, py+3);
+      }
+
+      mark(positions.sun, '#f3c366', '☉');
+      mark(positions.moon, '#9bd1f2', '☾');
+      mark(positions.asc, '#f08b8b', '↑');
+    }
+
+    // Format degrees into sign + deg
+    function formatDegLabel(deg){
+      deg = ((deg%360) + 360) % 360;
+      const signIdx = Math.floor(deg / 30);
+      const degInSign = deg % 30;
+      const mins = Math.floor((degInSign - Math.floor(degInSign)) * 60);
+      return `${SIGN_NAMES[signIdx]} ${Math.floor(degInSign)}° ${pad(mins)}'`;
+    }
+
+    // Main action
+    btn.addEventListener('click', ()=>{
+      const name = nameEl.value.trim() || 'You';
+      const dob = dobEl.value;
+      const tob = tobEl.value;
+      const place = placeEl.value.trim() || '';
+      const utcText = utcEl.value.trim();
+      const utcOffset = parseUTCOffsetText(utcText); // hours or null
+
+      if(!dob || !tob){
+        alert('Please fill Date and Time of birth (local). Add UTC offset if you know it.');
         return;
       }
 
-      // Build a Date using the provided local time and then adjust to UTC using tzOffset
-      // dob 'YYYY-MM-DD' and tob 'HH:MM'
+      // Build a JS Date from the local time-of-day. We will convert to UTC using the utcOffset if provided.
+      // If UTC offset not provided, we will use the browser timezone offset (approximate).
       const localISO = dob + 'T' + tob + ':00';
-      let dateLocal = new Date(localISO); // this treats it as local browser timezone, but we'll adjust using tzOffset
-      // Convert local time-of-day for the selected place to UTC by subtracting tzOffset hours
-      // (tzOffset is hours east of UTC, e.g. +2 -> 2)
-      const utcDate = new Date(dateLocal.getTime() - (tzOffset * 60 * 60 * 1000));
-
-      // Calculate positions
-      let positions;
-      try {
-        positions = calcPositions(utcDate, lat, lon);
-      } catch (err) {
-        console.error('calcPositions failed', err); alert('Calculation failed - see console.'); return;
+      let localDate = new Date(localISO);
+      // Determine the UTC date-time to use:
+      let utcDate;
+      if(utcOffset !== null){
+        // user gave offset (hours east of UTC). Convert: UTC = local - offset
+        utcDate = new Date(localDate.getTime() - utcOffset*3600*1000);
+      } else {
+        // use browser's timezone offset (in minutes behind UTC)
+        const browserOffsetMinutes = localDate.getTimezoneOffset();
+        utcDate = new Date(localDate.getTime() + browserOffsetMinutes*60*1000);
       }
 
-      // Draw wheel and show text
-      drawWheel(positions);
-      const sunSign = signFromLongitude(positions.sun);
-      const moonSign = signFromLongitude(positions.moon);
-      const ascSign = signFromLongitude(positions.asc);
+      // For the Ascendant calculation we need lat/lon; since we removed place-lookup, ask user to supply or use defaults
+      // We'll ask for a quick prompt for lat/lon if not provided via place (this keeps UI simple). Use approximate autos for known cities:
+      let lat = 0, lon = 0;
+      // Quick lookup map for some common cities (so users don't need coords)
+      const quick = {
+        "athens": {lat:37.9838, lon:23.7275},
+        "london": {lat:51.5074, lon:-0.1278},
+        "new york": {lat:40.7128, lon:-74.0060},
+        "los angeles": {lat:34.0522, lon:-118.2437},
+        "paris": {lat:48.8566, lon:2.3522},
+        "rome": {lat:41.9028, lon:12.4964},
+        "berlin": {lat:52.52, lon:13.4050},
+        "mumbai": {lat:19.0760, lon:72.8777},
+        "beijing": {lat:39.9042, lon:116.4074},
+        "tokyo": {lat:35.6895, lon:139.6917},
+        "sydney": {lat:-33.8688, lon:151.2093}
+      };
+      if(place){
+        const key = place.toLowerCase().split(',')[0].trim();
+        if(quick[key]){ lat = quick[key].lat; lon = quick[key].lon; }
+      }
+      // If still zero, ask user for lat/lon with prompt (very simple)
+      if(lat === 0 && lon === 0){
+        const fill = confirm('No latitude/longitude could be inferred from the place. Would you like to enter latitude/longitude now? (Cancel = use Greenwich 0,0)');
+        if(fill){
+          const latS = prompt('Enter latitude in decimal degrees (north positive, e.g. 51.5074)');
+          const lonS = prompt('Enter longitude in decimal degrees (east positive, e.g. -0.1278)');
+          lat = parseFloat(latS) || 0;
+          lon = parseFloat(lonS) || 0;
+        } else {
+          lat = 0; lon = 0;
+        }
+      }
 
-      resultsDiv.innerHTML = `<h3>${name}'s Chart</h3>
-        <p><b>Sun in ${sunSign}</b> — ${meanings[sunSign].sun}</p>
-        <p><b>Moon in ${moonSign}</b> — ${meanings[moonSign].moon}</p>
-        <p><b>Rising (Asc) in ${ascSign}</b> — ${meanings[ascSign].asc}</p>
-        <p class="muted">Calculated client-side using astronomia. For enterprise precision you can integrate Swiss Ephemeris later.</p>
+      // Calculate positions (UTC date, lat, lon)
+      let positions;
+      try {
+        positions = calcPositionsFromUTCDate(utcDate, lat, lon);
+      } catch(e) {
+        console.error(e);
+        alert('Calculation failed — please check the input values.');
+        return;
+      }
+
+      // Draw wheel
+      drawWheel(positions);
+
+      // Sign names
+      const sunSign = signFromLon(positions.sun);
+      const moonSign = signFromLon(positions.moon);
+      const ascSign = signFromLon(positions.asc);
+
+      // Compose three rich paragraphs
+      const sunText = INTERP[sunSign]?.sun || '';
+      const moonText = INTERP[moonSign]?.moon || '';
+      const ascText = INTERP[ascSign]?.asc || '';
+
+      // Place info line
+      const placeLine = place ? `<p class="muted">Place: ${place}</p>` : '';
+
+      // Show results
+      resDiv.innerHTML = `<h3>${name}'s Chart</h3>
+        ${placeLine}
+        <p><b>Sun:</b> ${sunSign} — <em>${formatDegLabel(positions.sun)}</em></p>
+        <p>${sunText}</p>
+        <p><b>Moon:</b> ${moonSign} — <em>${formatDegLabel(positions.moon)}</em></p>
+        <p>${moonText}</p>
+        <p><b>Rising (Ascendant):</b> ${ascSign} — <em>${formatDegLabel(positions.asc)}</em></p>
+        <p>${ascText}</p>
+        <p class="muted" style="margin-top:10px">Note: This runs fully client-side. If you need historic timezone conversion, or automatic place lookup, we can add that via an external hosted version.</p>
       `;
     });
 
