@@ -41,5 +41,233 @@
   <input id="name" type="text">
 
   <label>Date of Birth</label>
-  <i
+  <input id="dob" type="date">
 
+  <label>Time of Birth</label>
+  <input id="tob" type="time">
+
+  <label>Place of Birth</label>
+  <input id="place" type="text" autocomplete="off">
+
+  <div id="placeList"><ul style="display:none"></ul></div>
+
+  <input id="lat" type="hidden">
+  <input id="lon" type="hidden">
+  <input id="tz" type="hidden">
+
+  <button id="generateBtn" type="submit">Generate Chart</button>
+</form>
+
+<div style="margin-top:30px;">
+  <canvas id="chartWheel" width="360" height="360" style="max-width:100%;"></canvas>
+</div>
+
+<div id="chartResults" style="max-width:600px; margin-top:20px;"></div>
+
+<script>
+/* ========================== */
+/*         API KEYS           */
+/* ========================== */
+
+const OPENCAGE_KEY = "9534fdfd7a604bd19b2662fa62a58101";
+const TIMEZONEDB_KEY = "5EOIXWITG4FU";
+
+/* ==========================
+      AUTOCOMPLETE
+========================== */
+
+const placeInput = document.getElementById('place');
+const placeListUL = document.querySelector('#placeList ul');
+const latEl = document.getElementById('lat');
+const lonEl = document.getElementById('lon');
+const tzEl = document.getElementById('tz');
+let acTimer;
+
+placeInput.addEventListener('input', () => {
+  clearTimeout(acTimer);
+  placeListUL.style.display = 'none';
+  const q = placeInput.value.trim();
+  if (q.length < 3) return;
+  acTimer = setTimeout(async () => {
+    const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(q)}&key=${OPENCAGE_KEY}&limit=6`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    placeListUL.innerHTML = '';
+    if (!data.results || data.results.length === 0) return;
+    data.results.forEach(r => {
+      const li = document.createElement('li');
+      li.textContent = r.formatted;
+      li.onclick = async () => {
+        placeInput.value = r.formatted;
+        latEl.value = r.geometry.lat;
+        lonEl.value = r.geometry.lng;
+        placeListUL.style.display = 'none';
+        const tzURL = `https://api.timezonedb.com/v2.1/get-time-zone?key=${TIMEZONEDB_KEY}&format=json&by=position&lat=${r.geometry.lat}&lng=${r.geometry.lng}`;
+        const tzResp = await fetch(tzURL);
+        const tzData = await tzResp.json();
+        tzEl.value = tzData.gmtOffset / 3600;
+      };
+      placeListUL.appendChild(li);
+    });
+    placeListUL.style.display = 'block';
+  }, 350);
+});
+
+/* ==========================
+   ASTRONOMY CALCULATIONS
+========================== */
+
+const SIGN_NAMES = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra",
+"Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
+
+function signFromLongitude(lon) {
+  lon = (lon % 360 + 360) % 360;
+  return SIGN_NAMES[Math.floor(lon / 30)];
+}
+
+function jdFromUTC(date) {
+  return window.astronomia.julian.CalendarGregorianToJD(
+    date.getUTCFullYear(),
+    date.getUTCMonth()+1,
+    date.getUTCDate() +
+      date.getUTCHours()/24 +
+      date.getUTCMinutes()/1440
+  );
+}
+
+function calcPositions(dateUTC, lat, lon) {
+  const astro = window.astronomia;
+  const jd = jdFromUTC(dateUTC);
+  const sun = astro.sun.position(jd);
+  const moon = astro.moon.position(jd);
+  const eps = astro.obliquity.meanObliquity(jd);
+  const th = astro.sidereal.apparent0(jd);
+  const lstDeg = th * 180/Math.PI + lon;
+  const phi = lat * Math.PI/180;
+  const LST = lstDeg * Math.PI/180;
+  const ascRad = Math.atan2(
+    Math.sin(LST),
+    Math.cos(LST)*Math.cos(eps) - Math.tan(phi)*Math.sin(eps)
+  );
+  const ascDeg = (ascRad * 180/Math.PI + 360) % 360;
+  return {
+    sun: (sun.lon * 180/Math.PI + 360) % 360,
+    moon: (moon.lon * 180/Math.PI + 360) % 360,
+    asc: ascDeg
+  };
+}
+
+/* ==========================
+      DRAW WHEEL
+========================== */
+
+function drawWheel(pos) {
+  const canvas = document.getElementById("chartWheel");
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w/2;
+  const cy = h/2;
+  const r = Math.min(w,h)/2 - 20;
+
+  ctx.clearRect(0,0,w,h);
+
+  ctx.beginPath();
+  ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.strokeStyle = "#000";
+  ctx.stroke();
+
+  ctx.font = "12px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  for (let i=0; i<12; i++) {
+    const ang = (i*30 - 90) * Math.PI/180;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(cx + r*Math.cos(ang), cy + r*Math.sin(ang));
+    ctx.strokeStyle = "#aaa";
+    ctx.stroke();
+    const labelAng = (i*30 + 15 - 90) * Math.PI/180;
+    ctx.fillText(SIGN_NAMES[i].slice(0,3),
+      cx + (r-20)*Math.cos(labelAng),
+      cy + (r-20)*Math.sin(labelAng)
+    );
+  }
+
+  function mark(deg, label) {
+    const ang = (deg - 90) * Math.PI/180;
+    const x = cx + (r-40)*Math.cos(ang);
+    const y = cy + (r-40)*Math.sin(ang);
+    ctx.beginPath();
+    ctx.arc(x,y,10,0,Math.PI*2);
+    ctx.fillStyle = "#000";
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.fillText(label, x, y+1);
+  }
+
+  mark(pos.sun, "☉");
+  mark(pos.moon, "☾");
+  mark(pos.asc, "↑");
+}
+
+/* ==========================
+      INTERPRETATIONS
+========================== */
+
+const INTERP = {
+  Aries:{sun:"Direct and energetic.",moon:"Emotionally bold.",asc:"Appears assertive."},
+  Taurus:{sun:"Steady and grounded.",moon:"Emotionally calm.",asc:"Appears stable."},
+  Gemini:{sun:"Communicative and curious.",moon:"Processes feelings through thought.",asc:"Appears bright."},
+  Cancer:{sun:"Emotional and intuitive.",moon:"Deeply sensitive.",asc:"Appears caring."},
+  Leo:{sun:"Warm and expressive.",moon:"Emotionally loyal.",asc:"Appears confident."},
+  Virgo:{sun:"Refined and service-oriented.",moon:"Emotionally analytical.",asc:"Appears organized."},
+  Libra:{sun:"Harmonizing and relational.",moon:"Emotionally balanced.",asc:"Appears diplomatic."},
+  Scorpio:{sun:"Intense and transformative.",moon:"Emotionally deep.",asc:"Appears magnetic."},
+  Sagittarius:{sun:"Expansive and optimistic.",moon:"Emotionally open.",asc:"Appears adventurous."},
+  Capricorn:{sun:"Structured and ambitious.",moon:"Emotionally steady.",asc:"Appears capable."},
+  Aquarius:{sun:"Innovative and idealistic.",moon:"Emotionally unique.",asc:"Appears original."},
+  Pisces:{sun:"Compassionate and imaginative.",moon:"Emotionally receptive.",asc:"Appears gentle."}
+};
+
+/* ==========================
+      GENERATE CHART
+========================== */
+
+document.getElementById("birthForm").addEventListener("submit", (e)=>{
+  e.preventDefault();
+
+  const name = document.getElementById("name").value || "You";
+  const dob = document.getElementById("dob").value;
+  const tob = document.getElementById("tob").value;
+  const lat = parseFloat(latEl.value);
+  const lon = parseFloat(lonEl.value);
+  const tzOffset = parseFloat(tzEl.value);
+
+  if(!dob || !tob || isNaN(lat)) {
+    alert("Please fill all fields and select a valid location.");
+    return;
+  }
+
+  const localDate = new Date(dob + "T" + tob + ":00");
+  const utcDate = new Date(localDate.getTime() - tzOffset*3600*1000);
+
+  const pos = calcPositions(utcDate, lat, lon);
+  drawWheel(pos);
+
+  const sunSign = signFromLongitude(pos.sun);
+  const moonSign = signFromLongitude(pos.moon);
+  const ascSign = signFromLongitude(pos.asc);
+
+  document.getElementById("chartResults").innerHTML = `
+    <h2>${name}'s Birth Chart</h2>
+    <h3>Sun in ${sunSign}</h3><p>${INTERP[sunSign].sun}</p>
+    <h3>Moon in ${moonSign}</h3><p>${INTERP[moonSign].moon}</p>
+    <h3>Rising in ${ascSign}</h3><p>${INTERP[ascSign].asc}</p>
+  `;
+});
+</script>
+
+</body>
+</html>
