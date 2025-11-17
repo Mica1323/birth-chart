@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Birth Chart Generator — Mica Stone</title>
+
+  <!-- Styling (simple, self-contained; you can edit later) -->
+  <style>
+    :root{
+      --bg:#0b0b0b; --card:#0f0f0f; --text:#ffffff; --muted:#bdbdbd;
+      --accent:#f4d03f;
+    }
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background:var(--bg);
+      color:var(--text);
+      display:flex;
+      justify-content:center;
+      padding:32px;
+    }
+    .app {
+      max-width:980px;
+      width:100%;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:12px;
+      padding:22px;
+      box-sizing:border-box;
+      box-shadow:0 6px 30px rgba(0,0,0,0.45);
+    }
+    h1{margin:0 0 14px 0;font-size:20px;color:var(--accent)}
+    p.lead{margin:0 0 18px 0;color:var(--muted)}
+    form label{display:block;font-weight:600;margin-top:10px;color:var(--text)}
+    form input[type="text"], form input[type="date"], form input[type="time"]{
+      width:100%; padding:10px 12px; margin-top:6px; border-radius:8px; border:1px solid rgba(255,255,255,0.06);
+      background:transparent; color:var(--text); box-sizing:border-box;
+    }
+    .row{display:flex;gap:18px;flex-wrap:wrap;margin-top:18px}
+    .col{flex:1 1 320px; min-width:260px}
+    button.generate {
+      margin-top:14px;
+      background:#000;color:#fff;padding:12px 18px;border-radius:8px;border:none;cursor:pointer;
+      font-weight:600; letter-spacing:0.02em;
+    }
+    /* place autocomplete list */
+    #placeList { position:relative; margin-top:6px; }
+    #placeList ul { list-style:none; margin:0; padding:0; border-radius:8px; overflow:hidden; max-height:220px; overflow-y:auto; background:#fff; color:#000; border:1px solid rgba(0,0,0,0.08); }
+    #placeList li{ padding:10px 12px; cursor:pointer; border-bottom:1px solid rgba(0,0,0,0.06); }
+    #placeList li:hover{ background:#f7f7f7; }
+    /* chart area */
+    .output{display:flex;gap:20px;align-items:flex-start; margin-top:22px; flex-wrap:wrap; justify-content:center}
+    .wheel { width:360px; height:360px; border-radius:50%; background:transparent; border:1px solid rgba(255,255,255,0.06); display:block; }
+    .results { max-width:420px; min-width:260px; color:var(--text) }
+    .results h3{ margin:0 0 6px 0 }
+    .muted{ color:var(--muted); font-size:0.9rem }
+    .legend{ margin-top:8px; font-size:0.9rem }
+    .legend span{ display:inline-block; margin-right:12px }
+    .legend .sun{ color:#f39c12 } .legend .moon{ color:#3498db } .legend .asc{ color:#e74c3c }
+    footer.note{ margin-top:14px; color:var(--muted); font-size:0.85rem }
+    /* responsive */
+    @media (max-width:820px){ .row{flex-direction:column} .output{flex-direction:column;align-items:center} .wheel{width:320px;height:320px} }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <h1>Birth Chart Generator</h1>
+    <p class="lead">Enter name, date, time and place of birth. Pick the correct place from the dropdown — the app finds latitude, longitude and local time automatically.</p>
+
+    <form id="birthForm" autocomplete="off">
+      <div class="row">
+        <div class="col">
+          <label for="name">Full name</label>
+          <input id="name" type="text" placeholder="e.g. Mica Stone" required>
+          <label for="dob">Date of birth</label>
+          <input id="dob" type="date" required>
+          <label for="tob">Time of birth (local)</label>
+          <input id="tob" type="time" required>
+        </div>
+
+        <div class="col">
+          <label for="place">Place of birth (city / town)</label>
+          <input id="place" type="text" placeholder="Start typing a city..." required>
+          <div id="placeList"><ul style="display:none"></ul></div>
+          <!-- these are filled automatically when a place is chosen -->
+          <input id="lat" type="hidden">
+          <input id="lon" type="hidden">
+          <input id="tz" type="hidden">
+          <button class="generate" id="generateBtn" type="submit">Generate Chart</button>
+        </div>
+      </div>
+    </form>
+
+    <div class="output" aria-live="polite">
+      <canvas id="chartWheel" class="wheel" width="360" height="360"></canvas>
+
+      <div class="results" id="chartResults">
+        <h3>Chart results</h3>
+        <p class="muted">No chart generated yet.</p>
+        <div class="legend">
+          <span class="sun">● ☉ Sun</span>
+          <span class="moon">● ☾ Moon</span>
+          <span class="asc">● ↑ Rising</span>
+        </div>
+        <footer class="note">Uses OpenCage for place lookup and TimeZoneDB for local time offsets.</footer>
+      </div>
+    </div>
+  </div>
+
+  <!-- Libraries: astronomia for planetary math (client-side) -->
+  <script src="https://cdn.jsdelivr.net/npm/astronomia@4.1.1/index.min.js"></script>
+
+  <script>
+  /* ========== CONFIG: paste your API keys here ========== */
+  const OPENCAGE_KEY = "9534fdfd7a604bd19b2662fa62a58101";
+  const TIMEZONEDB_KEY = "5EOIXWITG4FU";
+  /* ====================================================== */
+
+  (function(){
+    // helpers / DOM
+    const placeInput = document.getElementById('place');
+    const placeListUL = document.querySelector('#placeList ul');
+    const latEl = document.getElementById('lat');
+    const lonEl = document.getElementById('lon');
+    const tzEl = document.getElementById('tz');
+    const resultsDiv = document.getElementById('chartResults');
+    const canvas = document.getElementById('chartWheel');
+    const ctx = canvas.getContext('2d');
+
+    // small safety checks for API keys
+    if(!OPENCAGE_KEY || !TIMEZONEDB_KEY || OPENCAGE_KEY.includes('REPLACE') || TIMEZONEDB_KEY.includes('REPLACE')) {
+      resultsDiv.innerHTML = "<h3>Chart results</h3><p style='color:#f88'>Please configure API keys in the file (OpenCage & TimeZoneDB).</p>";
+    }
+
+    // autocomplete: query OpenCage (limit 6)
+    let acTimer;
+    placeInput.addEventListener('input', () => {
+      clearTimeout(acTimer);
+      placeListUL.style.display = 'none';
+      const q = placeInput.value.trim();
+      if (q.length < 3) return;
+      acTimer = setTimeout(async () => {
+        try {
+          const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(q)}&key=${OPENCAGE_KEY}&limit=6`;
+          const resp = await fetch(url);
+          const data = await resp.json();
+          placeListUL.innerHTML = '';
+          if (!data.results || data.results.length === 0) { placeListUL.style.display='none'; return; }
+          data.results.forEach(r => {
+            const li = document.createElement('li');
+            li.textContent = r.formatted;
+            li.style.padding = '8px 12px';
+            li.style.cursor = 'pointer';
+            li.addEventListener('click', async () => {
+              placeInput.value = r.formatted;
+              latEl.value = r.geometry.lat;
+              lonEl.value = r.geometry.lng;
+              placeListUL.style.display = 'none';
+              // timezone lookup
+              try {
+                const tzResp = await fetch(`https://api.timezonedb.com/v2.1/get-time-zone?key=${TIMEZONEDB_KEY}&format=json&by=position&lat=${r.geometry.lat}&lng=${r.geometry.lng}`);
+                const tzData = await tzResp.json();
+                // tzData.gmtOffset is seconds from UTC (signed)
+                tzEl.value = tzData.gmtOffset/3600;
+                // show small confirmation
+                resultsDiv.querySelector('.muted').textContent = `Location set: ${r.formatted} (UTC ${tzEl.value >=0 ? '+'+tzEl.value : tzEl.value})`;
+              } catch(e) {
+                console.warn('timezone lookup failed', e);
+              }
+            });
+            placeListUL.appendChild(li);
+          });
+          placeListUL.style.display = 'block';
+        } catch(err) {
+          console.error('autocomplete error', err);
+        }
+      }, 350);
+    });
+
+    // astronomy helpers (uses astronomia loaded above)
+    const astro = window.astronomia;
+    const SIGN_NAMES = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
+    function signFromLongitude(lon) { return SIGN_NAMES[Math.floor(((lon%360)+360)%360/30)]; }
+    function jdFromDateUTC(date) {
+      const y = date.getUTCFullYear(), m = date.getUTCMonth()+1;
+      const day = date.getUTCDate() + date.getUTCHours()/24 + date.getUTCMinutes()/1440 + date.getUTCSeconds()/86400;
+      return astro.julian.CalendarGregorianToJD(y,m,day);
+    }
+
+    function calcPositions(dateUTC, lat, lon) {
+      const jd = jdFromDateUTC(dateUTC);
+      const sunPos = astro.sun.position(jd); // returns object with lon (rad)
+      const moonPos = astro.moon.position(jd); // returns object with lon (rad)
+      const eps = astro.obliquity.meanObliquity(jd); // radians
+      const th = astro.sidereal.apparent0(jd); // radians
+      const lstDeg = (th * 180/Math.PI) + lon; // local sidereal deg
+      const phi = lat * Math.PI/180;
+      const ob = eps; // radians
+      const LST = lstDeg * Math.PI/180;
+      // ascendant formula (approx)
+      const tA = Math.atan2(Math.sin(LST), Math.cos(LST)*Math.cos(ob) - Math.tan(phi)*Math.sin(ob));
+      const ascDeg = (tA * 180/Math.PI + 360) % 360;
+      return {
+        sun: (sunPos.lon*180/Math.PI+360)%360,
+        moon: (moonPos.lon*180/Math.PI+360)%360,
+        asc: ascDeg,
+        jd: jd
+      };
+    }
+
+    // draw wheel with markers
+    function drawWheel(positions) {
+      const w = canvas.width, h = canvas.height;
+      const cx = w/2, cy = h/2, r = Math.min(w,h)/2 - 18;
+      ctx.clearRect(0,0,w,h);
+      // outer circle
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+
+      // sections and labels
+      ctx.font = '12px serif'; ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.textBaseline='middle';
+      for (let i=0;i<12;i++){
+        const ang = (i*30 - 90) * Math.PI/180;
+        // divider
+        ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx + r*Math.cos(ang), cy + r*Math.sin(ang)); ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.stroke();
+        const la = ((i*30 + 15) - 90) * Math.PI/180;
+        ctx.fillText(SIGN_NAMES[i].slice(0,3), cx + (r-30)*Math.cos(la), cy + (r-30)*Math.sin(la));
+      }
+
+      // mark helper
+      function mark(deg, label, color) {
+        const ang = (deg - 90) * Math.PI/180;
+        const px = cx + (r-50)*Math.cos(ang), py = cy + (r-50)*Math.sin(ang);
+        ctx.beginPath(); ctx.fillStyle = color; ctx.arc(px,py,8,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#000'; ctx.font='10px serif'; ctx.fillText(label, px, py+3);
+      }
+
+      mark(positions.sun, '☉', '#f39c12');
+      mark(positions.moon, '☾', '#3498db');
+      mark(positions.asc, '↑', '#e74c3c');
+    }
+
+    // concise interpretations (you can expand)
+    const meanings = {
+      Aries: {sun: "Fiery leadership, initiative and courage.", moon: "Quick emotional responses and pride in feelings.", asc: "Direct and energetic outward persona."},
+      Taurus: {sun: "Grounded, patient, practical presence.", moon: "Nurturing, steady emotions and attachment.", asc: "Calm, deliberate, reassuring outward manner."},
+      Gemini: {sun: "Curious, communicative and adaptable core.", moon: "Emotionally cerebral and changeable.", asc: "Talkative, quick, and mentally agile outward impression."},
+      Cancer: {sun: "Protective, home-focused purpose.", moon: "Deeply feeling and caring inner life.", asc: "Gentle, sensitive, guardian-like presentation."},
+      Leo: {sun: "Creative leadership, generosity and confidence.", moon: "Warm-hearted pride and dramatic feeling nature.", asc: "Bright, charismatic, and magnetic presence."},
+      Virgo: {sun: "Practical service, attention to detail.", moon: "Emotionally helpful and steady.", asc: "Precise, organized, and thoughtful exterior."},
+      Libra: {sun: "Relationship-oriented, graceful and fair.", moon: "Seeks harmony and partnership emotionally.", asc: "Polished, diplomatic, and balanced outward style."},
+      Scorpio: {sun: "Intensity, transformation and willpower.", moon: "Emotionally deep, secret and loyal.", asc: "Magnetic, intense and private public manner."},
+      Sagittarius: {sun: "Philosophical, free and adventurous.", moon: "Emotionally optimistic and restless.", asc: "Open, candid and exploratory presentation."},
+      Capricorn: {sun: "Disciplined ambition and structure.", moon: "Responsible, reserved emotional life.", asc: "Serious, authoritative and steady persona."},
+      Aquarius: {sun: "Innovative, humanitarian and clever.", moon: "Detached ideals and emotional independence.", asc: "Unconventional, visionary and aloof presentation."},
+      Pisces: {sun: "Imaginative, compassionate and receptive.", moon: "Deeply empathetic and intuitive.", asc: "Dreamy, soft, and imaginative outward presence."}
+    };
+
+    // on submit: build date/time using place tz (tz is hours offset)
+    document.getElementById('birthForm').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const name = document.getElementById('name').value.trim() || 'You';
+      const dob = document.getElementById('dob').value;
+      const tob = document.getElementById('tob').value;
+      const lat = parseFloat(latEl.value);
+      const lon = parseFloat(lonEl.value);
+      const tzOffset = parseFloat(tzEl.value) || 0;
+
+      if (!dob || !tob || Number.isNaN(lat) || Number.isNaN(lon)) {
+        alert('Please complete date, time, and pick a valid place from the suggestions.');
+        return;
+      }
+
+      // Build a Date using the provided local time and then adjust to UTC using tzOffset
+      // dob 'YYYY-MM-DD' and tob 'HH:MM'
+      const localISO = dob + 'T' + tob + ':00';
+      let dateLocal = new Date(localISO); // this treats it as local browser timezone, but we'll adjust using tzOffset
+      // Convert local time-of-day for the selected place to UTC by subtracting tzOffset hours
+      // (tzOffset is hours east of UTC, e.g. +2 -> 2)
+      const utcDate = new Date(dateLocal.getTime() - (tzOffset * 60 * 60 * 1000));
+
+      // Calculate positions
+      let positions;
+      try {
+        positions = calcPositions(utcDate, lat, lon);
+      } catch (err) {
+        console.error('calcPositions failed', err); alert('Calculation failed - see console.'); return;
+      }
+
+      // Draw wheel and show text
+      drawWheel(positions);
+      const sunSign = signFromLongitude(positions.sun);
+      const moonSign = signFromLongitude(positions.moon);
+      const ascSign = signFromLongitude(positions.asc);
+
+      resultsDiv.innerHTML = `<h3>${name}'s Chart</h3>
+        <p><b>Sun in ${sunSign}</b> — ${meanings[sunSign].sun}</p>
+        <p><b>Moon in ${moonSign}</b> — ${meanings[moonSign].moon}</p>
+        <p><b>Rising (Asc) in ${ascSign}</b> — ${meanings[ascSign].asc}</p>
+        <p class="muted">Calculated client-side using astronomia. For enterprise precision you can integrate Swiss Ephemeris later.</p>
+      `;
+    });
+
+  })();
+  </script>
+</body>
+</html>
